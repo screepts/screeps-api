@@ -21,24 +21,30 @@ const makeInnerAPI = (self: RawAPI) => ({
   /**
    * GET /api/version
    */
-  version(): Promise<{
-    ok: 1
-    package: number
-    protocol: number
-    serverData: {
-      customObjectTypes: any
-      historyChunkSize: number
-      features: any
-      shards: string[]
-    }
-    users: number
-  }> {
+  version(): Res<
+    {
+      package: number
+      protocol: number
+      serverData: AtLeast<{
+        customObjectTypes: object
+        historyChunkSize: number
+        features: AtLeast<{ name: string; version: number }>[]
+        shards: string[]
+      }>
+      users: number
+    } & Partial<{
+      currentSeason: string | undefined
+      seasonAccessCost: string | undefined
+      decorationConvertationCost: number | undefined
+      decorationPixelizationCost: number | undefined
+    }>
+  > {
     return self.req("GET", "/api/version")
   },
   /**
    * GET /api/authmod
    */
-  authmod(): Promise<{ ok: number; name: string; version?: any }> {
+  authmod(): Res<{ name: string; version?: any }> {
     if (self.isOfficialServer()) {
       return Promise.resolve({ ok: 1, name: "official" })
     }
@@ -50,7 +56,17 @@ const makeInnerAPI = (self: RawAPI) => ({
    * Private:
    * GET /room-history
    */
-  history(room: string, tick: number, shard = DEFAULT_SHARD): Promise<any> {
+  history(
+    room: string,
+    tick: number,
+    shard = DEFAULT_SHARD,
+  ): Promise<{
+    /** milliseconds since the Unix epoch */
+    timestamp: number
+    room: string
+    base: number
+    ticks: { [time: string]: AdditonalKeys }
+  }> {
     if (self.isOfficialServer()) {
       tick -= tick % OFFICIAL_HISTORY_INTERVAL
       return self.req("GET", `/room-history/${shard}/${room}/${tick}.json`)
@@ -64,8 +80,7 @@ const makeInnerAPI = (self: RawAPI) => ({
      * POST /api/servers/list
      * A list of community servers
      */
-    list(): Promise<{
-      ok: number
+    list(): Res<{
       servers: {
         _id: string
         settings: {
@@ -85,25 +100,25 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * POST /api/auth/signin
      */
-    signin(email: string, password: string): Promise<{ ok: number; token: string }> {
+    signin(email: string, password: string): Res<{ token: string }> {
       return self.req("POST", "/api/auth/signin", { email, password })
     },
     /**
      * POST /api/auth/steam-ticket
      */
-    steamTicket(ticket: any, useNativeAuth = false): Promise<any> {
+    steamTicket(ticket: any, useNativeAuth = false): UndocumentedRes {
       return self.req("POST", "/api/auth/steam-ticket", { ticket, useNativeAuth })
     },
     /**
      * GET /api/auth/me
      */
-    me(): Promise<Me> {
+    me(): Res<Me> {
       return self.req("GET", "/api/auth/me")
     },
     /**
      * GET /api/auth/query-token
      */
-    queryToken(token: string): Promise<any> {
+    queryToken(token: string): UndocumentedRes {
       return self.req("GET", "/api/auth/query-token", { token })
     },
   },
@@ -111,25 +126,25 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * GET /api/register/check-email
      */
-    checkEmail(email: string): Promise<any> {
+    checkEmail(email: string): UndocumentedRes {
       return self.req("GET", "/api/register/check-email", { email })
     },
     /**
      * GET /api/register/check-username
      */
-    checkUsername(username: string): Promise<any> {
+    checkUsername(username: string): UndocumentedRes {
       return self.req("GET", "/api/register/check-username", { username })
     },
     /**
      * POST /api/register/set-username
      */
-    setUsername(username: string): Promise<any> {
+    setUsername(username: string): UndocumentedRes {
       return self.req("POST", "/api/register/set-username", { username })
     },
     /**
      * POST /api/register/submit
      */
-    submit(username: string, email: string, password: string, modules: any): Promise<any> {
+    submit(username: string, email: string, password: string, modules: any): UndocumentedRes {
       return self.req("POST", "/api/register/submit", { username, email, password, modules })
     },
   },
@@ -138,8 +153,7 @@ const makeInnerAPI = (self: RawAPI) => ({
      * GET /api/user/messages/list?respondent={userId}
      * @param respondent the long `_id` of the user, not the username
      */
-    list(respondent: string): Promise<{
-      ok: number
+    list(respondent: string): Res<{
       messages: { _id: string; date: string; type: string; text: string; unread: boolean }[]
     }> {
       return self.req("GET", "/api/user/messages/list", { respondent })
@@ -147,8 +161,7 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * GET /api/user/messages/index
      */
-    index(): Promise<{
-      ok: number
+    index(): Res<{
       messages: {
         _id: string
         message: {
@@ -168,20 +181,20 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * GET /api/user/messages/unread-count
      */
-    unreadCount(): Promise<{ ok: number; count: number }> {
+    unreadCount(): Res<{ count: number }> {
       return self.req("GET", "/api/user/messages/unread-count")
     },
     /**
      * POST /api/user/messages/send
      * @param respondent the long `_id` of the user, not the username
      */
-    send(respondent: string, text: string): Promise<{ ok: number }> {
+    send(respondent: string, text: string): Res<{}> {
       return self.req("POST", "/api/user/messages/send", { respondent, text })
     },
     /**
      * POST /api/user/messages/mark-read
      */
-    markRead(id: string): Promise<any> {
+    markRead(id: string): UndocumentedRes {
       return self.req("POST", "/api/user/messages/mark-read", { id })
     },
   },
@@ -194,8 +207,7 @@ const makeInnerAPI = (self: RawAPI) => ({
       rooms: string[],
       statName: "owner0" | "claim0" | StatKey,
       shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
+    ): Res<{
       stats: {
         [roomName: string]: {
           status: string
@@ -210,16 +222,13 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * POST /api/game/gen-unique-object-name
      */
-    genUniqueObjectName(
-      type: "flag" | "spawn",
-      shard = DEFAULT_SHARD,
-    ): Promise<{ ok: number; name: string }> {
+    genUniqueObjectName(type: "flag" | "spawn", shard = DEFAULT_SHARD): Res<{ name: string }> {
       return self.req("POST", "/api/game/gen-unique-object-name", { type, shard })
     },
     /**
      * POST /api/game/check-unique-object-name
      */
-    checkUniqueObjectName(type: string, name: string, shard = DEFAULT_SHARD): Promise<any> {
+    checkUniqueObjectName(type: string, name: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("POST", "/api/game/check-unique-object-name", { type, name, shard })
     },
     /**
@@ -231,7 +240,7 @@ const makeInnerAPI = (self: RawAPI) => ({
       y: number,
       name: string,
       shard = DEFAULT_SHARD,
-    ): Promise<any> {
+    ): UndocumentedRes {
       return self.req("POST", "/api/game/place-spawn", { name, room, x, y, shard })
     },
     /**
@@ -248,16 +257,7 @@ const makeInnerAPI = (self: RawAPI) => ({
       color: FlagColor = 1,
       secondaryColor: FlagColor = 1,
       shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: {
-        nModified: number
-        ok: number
-        upserted?: { index: number; _id: string }[]
-        n: number
-      }
-      connection: { host: string; id: string; port: number }
-    }> {
+    ): DbResponse {
       return self.req("POST", "/api/game/create-flag", {
         name,
         room,
@@ -271,13 +271,13 @@ const makeInnerAPI = (self: RawAPI) => ({
     /**
      * POST/api/game/gen-unique-flag-name
      */
-    genUniqueFlagName(shard = DEFAULT_SHARD): Promise<any> {
+    genUniqueFlagName(shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("POST", "/api/game/gen-unique-flag-name", { shard })
     },
     /**
      * POST /api/game/check-unique-flag-name
      */
-    checkUniqueFlagName(name: string, shard = DEFAULT_SHARD): Promise<any> {
+    checkUniqueFlagName(name: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("POST", "/api/game/check-unique-flag-name", { name, shard })
     },
     /**
@@ -287,17 +287,13 @@ const makeInnerAPI = (self: RawAPI) => ({
       color: FlagColor = 1,
       secondaryColor: FlagColor = 1,
       shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: { nModified: number; ok: number; n: number }
-      connection: { host: string; id: string; port: number }
-    }> {
+    ): DbResponse {
       return self.req("POST", "/api/game/change-flag-color", { color, secondaryColor, shard })
     },
     /**
      * POST /api/game/remove-flag
      */
-    removeFlag(room: string, name: string, shard = DEFAULT_SHARD): Promise<any> {
+    removeFlag(room: string, name: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("POST", "/api/game/remove-flag", { name, room, shard })
     },
     /**
@@ -312,21 +308,7 @@ can destroy multiple structures at once
 intent can be an empty object for suicide and unclaim, but the web interface sends the id in it, as described
       * @example remove construction site: name = "remove", intent = {}
       */
-    addObjectIntent(
-      room: string,
-      name: string,
-      intent: string,
-      shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: {
-        nModified: number
-        ok: number
-        upserted?: { index: number; _id: string }[]
-        n: number
-      }
-      connection: { host: string; id: string; port: number }
-    }> {
+    addObjectIntent(room: string, name: string, intent: string, shard = DEFAULT_SHARD): DbResponse {
       return self.req("POST", "/api/game/add-object-intent", { room, name, intent, shard })
     },
     /**
@@ -340,9 +322,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       structureType: string,
       name: string,
       shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: { ok: number; n: number }
+    ): DbInsertResponse<{
       ops: {
         type: string
         room: string
@@ -354,8 +334,6 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
         progressTotal: number
         _id: string
       }[]
-      insertedCount: number
-      insertedIds: string[]
     }> {
       return self.req("POST", "/api/game/create-construction", {
         room,
@@ -369,15 +347,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * POST /api/game/set-notify-when-attacked
      */
-    setNotifyWhenAttacked(
-      _id: string,
-      enabled = true,
-      shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: { ok: number; nModified: number; n: number }
-      connection: { id: string; host: string; port: number }
-    }> {
+    setNotifyWhenAttacked(_id: string, enabled = true, shard = DEFAULT_SHARD): DbResponse {
       return self.req("POST", "/api/game/set-notify-when-attacked", { _id, enabled, shard })
     },
     /**
@@ -391,7 +361,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       type: any,
       boosted = false,
       shard = DEFAULT_SHARD,
-    ): Promise<any> {
+    ): UndocumentedRes {
       return self.req("POST", "/api/game/create-invader", {
         room,
         x,
@@ -405,34 +375,31 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * POST /api/game/remove-invader
      */
-    removeInvader(_id: string, shard = DEFAULT_SHARD): Promise<any> {
+    removeInvader(_id: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("POST", "/api/game/remove-invader", { _id, shard })
     },
     /**
      * GET /api/game/time
      */
-    time(shard = DEFAULT_SHARD): Promise<{
-      ok: number
-      time: number
-    }> {
+    time(shard = DEFAULT_SHARD): Res<{ time: number }> {
       return self.req("GET", "/api/game/time", { shard })
     },
     /**
      * GET /api/game/world-size
      */
-    worldSize(shard = DEFAULT_SHARD): Promise<any> {
+    worldSize(shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("GET", "/api/game/world-size", { shard })
     },
     /**
      * GET /api/game/room-decorations
      */
-    roomDecorations(room: string, shard = DEFAULT_SHARD): Promise<any> {
+    roomDecorations(room: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("GET", "/api/game/room-decorations", { room, shard })
     },
     /**
      * GET /api/game/room-objects
      */
-    roomObjects(room: string, shard = DEFAULT_SHARD): Promise<any> {
+    roomObjects(room: string, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("GET", "/api/game/room-objects", { room, shard })
     },
     /**
@@ -444,16 +411,13 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       room: string,
       encoded = 1,
       shard = DEFAULT_SHARD,
-    ): Promise<
-      | {
-          ok: number
+    ):
+      | Res<{
           terrain: { room: string; x: number; y: number; type: "wall" | "swamp" }[]
-        }
-      | {
-          ok: number
+        }>
+      | Res<{
           terrain: { _id: string; room: string; terrain: string; type: "wall" | "swamp" }[]
-        }
-    > {
+        }> {
       return self.req("GET", "/api/game/room-terrain", { room, encoded, shard })
     },
     /**
@@ -473,7 +437,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/game/room-overview
      */
-    roomOverview(room: string, interval = 8, shard = DEFAULT_SHARD): Promise<any> {
+    roomOverview(room: string, interval = 8, shard = DEFAULT_SHARD): UndocumentedRes {
       return self.req("GET", "/api/game/room-overview", { room, interval, shard })
     },
     market: {
@@ -482,8 +446,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
        * - _id is the resource type, and there will only be one of each type.
        * - `count` is the number of orders.
        */
-      ordersIndex(shard = DEFAULT_SHARD): Promise<{
-        ok: 1
+      ordersIndex(shard = DEFAULT_SHARD): Res<{
         list: { _id: string; count: number }[]
       }> {
         return self.req("GET", "/api/game/market/orders-index", { shard })
@@ -492,8 +455,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
        * GET /api/game/market/my-orders
        * `resourceType` is one of the RESOURCE_* constants.
        */
-      myOrders(): Promise<{
-        ok: number
+      myOrders(): Res<{
         list: MarketOrder[]
       }> {
         return self.req("GET", "/api/game/market/my-orders").then(self.mapToShard)
@@ -506,8 +468,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       orders(
         resourceType: string,
         shard = DEFAULT_SHARD,
-      ): Promise<{
-        ok: number
+      ): Res<{
         list: MarketOrder[]
       }> {
         return self.req("GET", "/api/game/market/orders", { resourceType, shard })
@@ -515,7 +476,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       /**
        * GET /api/game/market/stats
        */
-      stats(resourceType: string, shard = DEFAULT_SHARD): Promise<any> {
+      stats(resourceType: string, shard = DEFAULT_SHARD): UndocumentedRes {
         return self.req("GET", "/api/game/market/stats", { resourceType, shard })
       },
     },
@@ -523,8 +484,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       /**
        * GET /api/game/shards/info
        */
-      info(): Promise<{
-        ok: number
+      info(): Res<{
         shards: {
           name: string
           lastTicks: number[]
@@ -547,11 +507,10 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       mode: "world" | "power" = "world",
       offset = 0,
       season?: string,
-    ): Promise<{
-      ok: number
+    ): Res<{
       list: { _id: string; season: string; user: string; score: number; rank: number }[]
       count: number
-      users: { [userId: string]: { _id: string; username: string; badge: Badge; gcl: number } }
+      users: { [userId: string]: User }
     }> {
       if (mode !== "world" && mode !== "power") throw new Error("incorrect mode parameter")
       if (!season) season = self.currentSeason()
@@ -567,8 +526,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       username: string,
       mode: string = "world",
       season: string = "",
-    ): Promise<{
-      ok: number
+    ): Res<{
       _id: string
       season: string
       user: string
@@ -581,8 +539,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
      * GET /api/leaderboard/seasons
      * The _id returned here is used for the season name in the other leaderboard calls
      */
-    seasons(): Promise<{
-      ok: number
+    seasons(): Res<{
       seasons: { _id: string; name: string; date: string }[]
     }> {
       return self.req("GET", "/api/leaderboard/seasons")
@@ -601,50 +558,50 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * POST /api/user/respawn
      */
-    respawn(): Promise<any> {
+    respawn(): UndocumentedRes {
       return self.req("POST", "/api/user/respawn")
     },
     /**
      * POST /api/user/set-active-branch
      */
-    setActiveBranch(branch: string, activeName: string): Promise<any> {
+    setActiveBranch(branch: string, activeName: string): UndocumentedRes {
       return self.req("POST", "/api/user/set-active-branch", { branch, activeName })
     },
     /**
      * POST /api/user/clone-branch
      */
-    cloneBranch(branch: string, newName: string, defaultModules: any): Promise<any> {
+    cloneBranch(branch: string, newName: string, defaultModules: any): UndocumentedRes {
       return self.req("POST", "/api/user/clone-branch", { branch, newName, defaultModules })
     },
     /**
      * POST /api/user/delete-branch
      */
-    deleteBranch(branch: string): Promise<any> {
+    deleteBranch(branch: string): UndocumentedRes {
       return self.req("POST", "/api/user/delete-branch", { branch })
     },
     /**
      * POST /api/user/notify-prefs
      */
-    notifyPrefs(prefs: any): Promise<any> {
+    notifyPrefs(prefs: any): UndocumentedRes {
       // disabled,disabledOnMessages,sendOnline,interval,errorsInterval
       return self.req("POST", "/api/user/notify-prefs", prefs)
     },
     /**
      * POST /api/user/tutorial-done
      */
-    tutorialDone(): Promise<any> {
+    tutorialDone(): UndocumentedRes {
       return self.req("POST", "/api/user/tutorial-done")
     },
     /**
      * POST /api/user/email
      */
-    email(email: string): Promise<any> {
+    email(email: string): UndocumentedRes {
       return self.req("POST", "/api/user/email", { email })
     },
     /**
      * GET /api/user/world-start-room
      */
-    worldStartRoom(shard: string): Promise<any> {
+    worldStartRoom(shard: string): UndocumentedRes {
       return self.req("GET", "/api/user/world-start-room", { shard })
     },
     /**
@@ -654,8 +611,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
      * - 'lost' when you loose all your spawns
      * - 'empty' when you have respawned and not placed your spawn yet
      */
-    worldStatus(): Promise<{
-      ok: number
+    worldStatus(): Res<{
       status: "normal" | "lost" | "empty"
     }> {
       return self.req("GET", "/api/user/world-status")
@@ -663,8 +619,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/user/branches
      */
-    branches(): Promise<{
-      ok: number
+    branches(): Res<{
       list: {
         _id: string
         branch: string
@@ -680,14 +635,14 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
        * for pushing or pulling code, as documented at http://support.screeps.com/hc/en-us/articles/203022612
        * @returns code
        */
-      get(branch: string): Promise<any> {
+      get(branch: string): UndocumentedRes {
         return self.req("GET", "/api/user/code", { branch })
       },
       /**
        * POST /api/user/code
        * for pushing or pulling code, as documented at http://support.screeps.com/hc/en-us/articles/203022612
        */
-      set(branch: string, modules: any, _hash?: any): Promise<any> {
+      set(branch: string, modules: any, _hash?: any): UndocumentedRes {
         if (!_hash) _hash = Date.now()
         return self.req("POST", "/api/user/code", { branch, modules, _hash })
       },
@@ -696,37 +651,37 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
       /**
        * GET /api/user/decorations/inventory
        */
-      inventory(): Promise<any> {
+      inventory(): UndocumentedRes {
         return self.req("GET", "/api/user/decorations/inventory")
       },
       /**
        * GET /api/user/decorations/themes
        */
-      themes(): Promise<any> {
+      themes(): UndocumentedRes {
         return self.req("GET", "/api/user/decorations/themes")
       },
       /**
        * POST /api/user/decorations/convert
        */
-      convert(decorations: number[]): Promise<any> {
+      convert(decorations: number[]): UndocumentedRes {
         return self.req("POST", "/api/user/decorations/convert", { decorations })
       },
       /**
        * POST /api/user/decorations/pixelize
        */
-      pixelize(count: number, theme = ""): Promise<any> {
+      pixelize(count: number, theme = ""): UndocumentedRes {
         return self.req("POST", "/api/user/decorations/pixelize", { count, theme })
       },
       /**
        * POST /api/user/decorations/activate
        */
-      activate(_id: string, active: any): Promise<any> {
+      activate(_id: string, active: any): UndocumentedRes {
         return self.req("POST", "/api/user/decorations/activate", { _id, active })
       },
       /**
        * POST /api/user/decorations/deactivate
        */
-      deactivate(decorations: string[]): Promise<any> {
+      deactivate(decorations: string[]): UndocumentedRes {
         return self.req("POST", "/api/user/decorations/deactivate", { decorations })
       },
     },
@@ -734,7 +689,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
      * GET /api/user/respawn-prohibited-rooms
      * - `rooms` is an array, but seems to always contain only one element
      */
-    respawnProhibitedRooms(): Promise<{ ok: number; rooms: string[] }> {
+    respawnProhibitedRooms(): Res<{ rooms: string[] }> {
       return self.req("GET", "/api/user/respawn-prohibited-rooms")
     },
     memory: {
@@ -743,7 +698,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
        * @param path the path may be empty or absent to retrieve all of Memory, Example: flags.Flag1
        * @returns gz: followed by base64-encoded gzipped JSON encoding of the requested memory path
        */
-      get(path = "", shard = DEFAULT_SHARD): Promise<{ ok: number; data: string }> {
+      get(path = "", shard = DEFAULT_SHARD): Res<{ data: string }> {
         return self.req("GET", "/api/user/memory", { path, shard })
       },
       /**
@@ -754,13 +709,9 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
         path: string,
         value: any,
         shard = DEFAULT_SHARD,
-      ): Promise<{
-        ok: number
-        result: { ok: number; n: number }
+      ): DbInsertResponse<{
         ops: { user: string; expression: string; hidden: boolean }[]
         data: any
-        insertedCount: number
-        insertedIds: string[]
       }> {
         return self.req("POST", "/api/user/memory", { path, value, shard })
       },
@@ -769,14 +720,14 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
          * GET /api/user/memory-segment?segment=[0-99]
          * @param segment A number from 0-99
          */
-        get(segment: number, shard = DEFAULT_SHARD): Promise<{ ok: number; data: string }> {
+        get(segment: number, shard = DEFAULT_SHARD): Res<{ data: string }> {
           return self.req("GET", "/api/user/memory-segment", { segment, shard })
         },
         /**
          * POST /api/user/memory-segment
          * @param segment A number from 0-99
          */
-        set(segment: number, data: any, shard = DEFAULT_SHARD): Promise<any> {
+        set(segment: number, data: any, shard = DEFAULT_SHARD): UndocumentedRes {
           return self.req("POST", "/api/user/memory-segment", { segment, data, shard })
         },
       },
@@ -784,50 +735,38 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/user/find?username={username}
      */
-    find(username: string): Promise<{
-      ok: number
-      user: User
-    }> {
+    find(username: string): Res<{ user: User }> {
       return self.req("GET", "/api/user/find", { username })
     },
     /**
      * GET /api/user/find?id={userId}
      */
-    findById(id: string): Promise<{
-      ok: number
-      user: {
-        _id: string
-        username: string
-        badge: Badge
-        gcl: number
-      }
-    }> {
+    findById(id: string): Res<{ user: User }> {
       return self.req("GET", "/api/user/find", { id })
     },
     /**
      * GET /api/user/stats
      */
-    stats(interval: number): Promise<any> {
+    stats(interval: number): UndocumentedRes {
       return self.req("GET", "/api/user/stats", { interval })
     },
     /**
      * GET /api/user/rooms
      */
-    rooms(id: string): Promise<any> {
+    rooms(id: string): UndocumentedRes {
       return self.req("GET", "/api/user/rooms", { id }).then(self.mapToShard)
     },
     /**
      * GET /api/user/overview?interval={interval}&statName={statName}
      * @param statName energyControl
      */
-    overview(interval: number, statName: string): Promise<any> {
+    overview(interval: number, statName: string): UndocumentedRes {
       return self.req("GET", "/api/user/overview", { interval, statName })
     },
     /**
      * GET /api/user/money-history
      */
-    moneyHistory(page = 0): Promise<{
-      ok: number
+    moneyHistory(page = 0): Res<{
       page: number
       hasMore: boolean
       list: {
@@ -868,19 +807,15 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     console(
       expression: any,
       shard = DEFAULT_SHARD,
-    ): Promise<{
-      ok: number
-      result: { ok: number; n: number }
+    ): DbInsertResponse<{
       ops: { user: string; expression: any; _id: string }[]
-      insertedCount: number
-      insertedIds: string[]
     }> {
       return self.req("POST", "/api/user/console", { expression, shard })
     },
     /**
      * GET /api/user/name
      */
-    name(): Promise<any> {
+    name(): UndocumentedRes {
       return self.req("GET", "/api/user/name")
     },
   },
@@ -891,8 +826,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
      * _id contains the room name for each room, and lastPvpTime contains the last tick pvp occurred
      * if neither a valid interval nor a valid start argument is provided, the result of the call is still ok, but with an empty rooms array.
      */
-    pvp(interval = 100): Promise<{
-      ok: number
+    pvp(interval = 100): Res<{
       time: number
       rooms: { _id: string; lastPvpTime: number }[]
     }> {
@@ -901,7 +835,19 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/experimental/nukes
      */
-    nukes(): Promise<any> {
+    nukes(): Res<{
+      nukes: {
+        [shard: string]: {
+          _id: string
+          type: "nuke"
+          room: string
+          x: number
+          y: number
+          landTime: number
+          launchRoomName: string
+        }
+      }
+    }> {
       return self.req("GET", "/api/experimental/nukes").then(self.mapToShard)
     },
   },
@@ -909,7 +855,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/warpath/battles
      */
-    battles(interval = 100): Promise<any> {
+    battles(interval = 100): UndocumentedRes {
       return self.req("GET", "/api/warpath/battles", { interval })
     },
   },
@@ -917,7 +863,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * GET /api/scoreboard/list
      */
-    list(limit = 20, offset = 0): Promise<any> {
+    list(limit = 20, offset = 0): UndocumentedRes {
       return self.req("GET", "/api/scoreboard/list", { limit, offset })
     },
   },
@@ -928,7 +874,12 @@ interface RawOpts extends URL {
   path: string
   token: string
 }
-export class RawAPI extends EventEmitter {
+export class RawAPI extends EventEmitter<{
+  token: [token: string]
+  auth: []
+  rateLimit: [ReturnType<typeof RawAPI.prototype.buildRateLimit>]
+  response: [Response]
+}> {
   opts: {
     url: string
     host?: string
@@ -937,7 +888,7 @@ export class RawAPI extends EventEmitter {
     email?: string
     password?: string
     experimentalRetry429?: boolean
-  }
+  } & AdditonalKeys
   token?: string
   private __authed = false
   readonly raw = makeInnerAPI(this)
@@ -1004,13 +955,15 @@ export class RawAPI extends EventEmitter {
     return res
   }
 
-  async req(method: string, path: string, body: any = {}): Promise<any> {
+  async req(method: string, path: string, body: any = {}): UndocumentedRes {
     let url = new URL(path, this.opts.url)
     const opts: RequestInit & { headers: HeaderRecord } = {
       method,
       headers: {},
     }
-    debugHttp(`${method} ${path} ${JSON.stringify(body)}`)
+    if (debugHttp.enabled) {
+      debugHttp(`${method} ${path} ${JSON.stringify(body)}`)
+    }
     if (this.token) {
       Object.assign(opts.headers, {
         "X-Token": this.token,
@@ -1103,6 +1056,29 @@ export class RawAPI extends EventEmitter {
   }
 }
 
+type Res<T extends object> = Promise<T & { ok: number }>
+type UndocumentedRes = Promise<any>
+
+type AdditonalKeys<T = any> = Partial<Record<string, T>>
+type AtLeast<T extends object> = T & AdditonalKeys
+
+type DbResponse = Res<{
+  result: {
+    nModified: number
+    ok: number
+    upserted?: { index: number; _id: string }[]
+    n: number
+  }
+  connection: { host: string; id: string; port: number }
+}>
+type DbInsertResponse<T> = Res<
+  {
+    result: { ok: number; n: number }
+    insertedCount: number
+    insertedIds: string[]
+  } & T
+>
+
 export interface Badge {
   color1: string
   color2: string
@@ -1148,13 +1124,9 @@ export interface MarketOrder {
   roomName: string
 }
 
-export interface Me {
-  ok: number
-  _id: string
+export interface Me extends User {
   email: string
-  username: string
   cpu: number
-  badge: Badge
   password: string
   notifyPrefs: {
     sendOnline: any
@@ -1163,7 +1135,6 @@ export interface Me {
     disabled: any
     interval: any
   }
-  gcl: number
   credits: number
   lastChargeTime: any
   lastTweetTime: any

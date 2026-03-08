@@ -13,7 +13,26 @@ const DEFAULTS = {
   maxRetryDelay: 60 * 1000, // in milli-seconds
 }
 
-export class Socket extends EventEmitter {
+export interface Message {
+      channel: string
+      type: string
+  id?: string
+  data: any
+    }
+
+export class Socket extends EventEmitter<
+  {
+  connected: []
+  disconnected: []
+  error: [Error | (Event & { error: Error })]
+  message: [Message]
+  token: [token: string]
+    auth: [Message & { data: { status: string; token?: string } }]
+  authed: []
+  subscribe: [path: string]
+  unsubscribe: [path: string]
+  } & { [channel: string]: [Message] }
+> {
   ws?: WebSocket
   api: ScreepsAPI
   opts: typeof DEFAULTS
@@ -156,21 +175,21 @@ export class Socket extends EventEmitter {
     }
     debug(`message ${msg}`)
     if (msg[0] === "[") {
-      msg = JSON.parse(msg)
-      let [, type, id, channel] = msg[0].match(/^(.+):(.+?)(?:\/(.+))?$/) as [
+      const arr: [string, any] = JSON.parse(msg)
+      let [, type, id, channel] = arr[0].match(/^(.+):(.+?)(?:\/(.+))?$/) as [
         unknown,
         string,
         string,
         string?,
       ]
       channel = channel || type
-      const event = { channel, id, type, data: msg[1] }
+      const event = { channel, id, type, data: arr[1] }
       this.emit(msg[0], event)
       this.emit(event.channel, event)
       this.emit("message", event)
     } else {
       const [channel, ...data] = msg.split(" ")
-      const event = { type: "server", channel, data: data as any }
+      const event: Message = { type: "server", channel, data }
       if (channel === "auth") {
         event.data = { status: data[0], token: data[1] }
       }
