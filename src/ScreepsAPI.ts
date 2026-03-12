@@ -38,11 +38,23 @@ export class ScreepsAPI extends RawAPI {
     const data = await configManager.getConfig()
 
     if (!data) throw new Error("No valid config found")
-    if (!data.servers[server]) {
-      throw new Error(`Server '${server}' does not exist in '${configManager.path}'`)
+    if (!server && process.stdin.isTTY && process.stdout.isTTY) {
+      const { select, isCancel } = await import("@clack/prompts")
+      const selectedServer = await select({
+        message: "Select a server:",
+        withGuide: false,
+        options: Object.entries(data.servers).map(([value, args]) => ({
+          value,
+          hint: args!.host,
+        })),
+      })
+      if (isCancel(selectedServer)) throw new Error("Server selection cancelled")
+      server = selectedServer
     }
 
     const conf = data.servers[server]
+    if (!conf) throw new Error(`Server '${server}' does not exist in '${configManager.path}'`)
+
     if (conf.ptr) conf.path = "/ptr"
     if (conf.season) conf.path = "/season"
     const api = new ScreepsAPI(

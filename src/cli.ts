@@ -24,7 +24,7 @@ async function run() {
   /** @param {string} name */
   const commandBase = (name: string, args = "") => {
     const command = new Command(name)
-    command.arguments(args).option("--server <server>", "Server config to use", "main")
+    command.arguments(args).option("--server <server>", "Server config to use", "")
     program.addCommand(command)
     return command
   }

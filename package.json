@@ -29,6 +29,7 @@
     "test": "node --run fmt:check && node --run lint && node --run test:types"
   },
   "dependencies": {
+    "@clack/prompts": "^1.1.0",
     "commander": "^14.0.3",
     "debug": "^4.4.3",
     "js-yaml": "^4.1.1"
