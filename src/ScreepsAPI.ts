@@ -1,5 +1,6 @@
 import { Socket } from "./Socket"
-import { RawAPI, type Me, type User } from "./RawAPI"
+import { RawAPI, type CodeList, type Me, type UndocumentedRes, type User } from "./RawAPI"
+export type { CodeList, Me, User, Badge, MarketOrder, UndocumentedRes } from "./RawAPI"
 import { ConfigManager } from "./ConfigManager"
 export { ConfigManager } from "./ConfigManager"
 
@@ -165,7 +166,8 @@ export class ScreepsAPI extends RawAPI {
   readonly leaderboard = this.raw.leaderboard
   readonly market = this.raw.game.market
   readonly console = this.raw.user.console
-  readonly code = this.raw.user.code
+
+  readonly code = codeRepository(this)
 
   readonly memory = {
     ...this.raw.user.memory,
@@ -177,3 +179,20 @@ export class ScreepsAPI extends RawAPI {
   }
   readonly segment = this.raw.user.memory.segment
 }
+
+const codeRepository = ({ raw: { user } }: RawAPI) => ({
+  get: user.code.get,
+  /** Unlike raw.code.set, this method will create a new branch if it doesn't exist */
+  set: async (branch: string, code: CodeList): UndocumentedRes => {
+    const { list } = await user.branches()
+    if (list.some((b) => b.branch == branch)) {
+      return user.code.set(branch, code)
+    } else {
+      return user.cloneBranch("", branch, code)
+    }
+  },
+  branches: user.branches,
+  cloneBranch: user.cloneBranch,
+  deleteBranch: user.deleteBranch,
+  setActiveBranch: user.setActiveBranch,
+})

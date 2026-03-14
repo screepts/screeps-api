@@ -131,10 +131,10 @@ async function run() {
           await Promise.all(
             Object.keys(modules).map(async (fn) => {
               const data = modules[fn]
-              if (data.binary) {
-                await writeFile(join(dir, `${fn}.wasm`), Buffer.from(data.binary, "base64"))
-              } else {
+              if (typeof data === "string") {
                 await writeFile(join(dir, `${fn}.js`), data)
+              } else {
+                await writeFile(join(dir, `${fn}.wasm`), Buffer.from(data.binary, "base64"))
               }
               console.log(`Saved ${fn}`)
             }),

@@ -570,7 +570,7 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
     /**
      * POST /api/user/clone-branch
      */
-    cloneBranch(branch: string, newName: string, defaultModules: any): UndocumentedRes {
+    cloneBranch(branch = "", newName: string, defaultModules: CodeList): UndocumentedRes {
       return self.req("POST", "/api/user/clone-branch", { branch, newName, defaultModules })
     },
     /**
@@ -635,14 +635,14 @@ intent can be an empty object for suicide and unclaim, but the web interface sen
        * for pushing or pulling code, as documented at http://support.screeps.com/hc/en-us/articles/203022612
        * @returns code
        */
-      get(branch: string): UndocumentedRes {
+      get(branch: string): Res<{ modules: CodeList }> {
         return self.req("GET", "/api/user/code", { branch })
       },
       /**
        * POST /api/user/code
        * for pushing or pulling code, as documented at http://support.screeps.com/hc/en-us/articles/203022612
        */
-      set(branch: string, modules: any, _hash?: any): UndocumentedRes {
+      set(branch: string, modules: CodeList, _hash?: any): UndocumentedRes {
         if (!_hash) _hash = Date.now()
         return self.req("POST", "/api/user/code", { branch, modules, _hash })
       },
@@ -1057,7 +1057,7 @@ export class RawAPI extends EventEmitter<{
 }
 
 type Res<T extends object> = Promise<T & { ok: number }>
-type UndocumentedRes = Promise<any>
+export type UndocumentedRes = Promise<any>
 
 type AdditonalKeys<T = any> = Partial<Record<string, T>>
 type AtLeast<T extends object> = T & AdditonalKeys
@@ -1147,4 +1147,12 @@ export interface User {
   username: string
   badge: Badge
   gcl: number
+}
+
+interface BinaryModule {
+  /** base64 encoded binary data */
+  binary: string
+}
+export interface CodeList {
+  [fileName: string]: string | BinaryModule
 }
