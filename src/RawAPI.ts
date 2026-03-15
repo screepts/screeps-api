@@ -1,14 +1,10 @@
-import { URL, format } from "url"
-import { EventEmitter } from "events"
-import zlib, { inflateSync } from "zlib"
+import { EventEmitter } from "eventemitter3"
+import { inflate } from "pako"
 import Debug from "debug"
-import { promisify } from "util"
 import type { HeaderRecord } from "undici-types/header"
 
 const debugHttp = Debug("screepsapi:http")
 const debugRateLimit = Debug("screepsapi:ratelimit")
-
-const gunzipAsync = promisify(zlib.gunzip)
 
 const DEFAULT_SHARD = "shard0"
 const OFFICIAL_HISTORY_INTERVAL = 100
@@ -935,7 +931,7 @@ export class RawAPI extends EventEmitter<{
       }
     }
     if (!opts.url) {
-      this.opts.url = format(this.opts)
+      this.opts.url = urlFormat(this.opts)
       if (!this.opts.url.endsWith("/")) this.opts.url += "/"
     }
     if (opts.token) {
@@ -1027,18 +1023,14 @@ export class RawAPI extends EventEmitter<{
     return res.data!
   }
 
-  async gz(data: string) {
+  gz(data: string) {
     if (!data.startsWith("gz:")) return data
     const buf = Buffer.from(data.slice(3), "base64")
-    const ret = await gunzipAsync(buf)
-    return ret.toString()
+    return inflate(buf, { to: "string" })
   }
 
   inflate(data: string) {
-    // es
-    const buf = Buffer.from(data.slice(3), "base64")
-    const ret = inflateSync(buf)
-    return JSON.parse(ret.toString())
+    return JSON.parse(this.gz(data))
   }
 
   buildRateLimit(method: string, path: string, res: Response) {
@@ -1054,6 +1046,57 @@ export class RawAPI extends EventEmitter<{
       toReset: reset - Math.floor(Date.now() / 1000),
     }
   }
+}
+
+/** Based on Node.js built-in URL format */
+function urlFormat(obj: Partial<URL>) {
+  let protocol = obj.protocol || ""
+  if (protocol && !protocol.endsWith(":")) {
+    protocol += ":"
+  }
+
+  let pathname = obj.pathname || ""
+  let host = ""
+
+  if (obj.host) {
+    host = obj.host
+  } else if (obj.hostname) {
+    host =
+      obj.hostname.includes(":") &&
+      (obj.hostname[0] !== "[" || obj.hostname[obj.hostname.length - 1] !== "]")
+        ? "[" + obj.hostname + "]"
+        : obj.hostname
+    if (obj.port) {
+      host += ":" + obj.port
+    }
+  }
+
+  if (pathname.includes("#") || pathname.includes("?")) {
+    let newPathname = ""
+    let lastPos = 0
+    const len = pathname.length
+    for (let i = 0; i < len; i++) {
+      const code = pathname.charAt(i)
+      if (code === "#" || code === "?") {
+        if (i > lastPos) {
+          newPathname += pathname.slice(lastPos, i)
+        }
+        newPathname += code === "#" ? "%23" : "%3F"
+        lastPos = i + 1
+      }
+    }
+    if (lastPos < len) {
+      newPathname += pathname.slice(lastPos)
+    }
+    pathname = newPathname
+  }
+
+  if (host) {
+    if (pathname && pathname[0] !== "/") pathname = "/" + pathname
+    host = "//" + host
+  }
+
+  return protocol + host + pathname
 }
 
 type Res<T extends object> = Promise<T & { ok: number }>

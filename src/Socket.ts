@@ -1,5 +1,4 @@
-import { URL } from "url"
-import { EventEmitter } from "events"
+import { EventEmitter } from "eventemitter3"
 import Debug from "debug"
 import type { ScreepsAPI } from "./ScreepsAPI"
 
@@ -14,23 +13,23 @@ const DEFAULTS = {
 }
 
 export interface Message {
-      channel: string
-      type: string
+  channel: string
+  type: string
   id?: string
   data: any
-    }
+}
 
 export class Socket extends EventEmitter<
   {
-  connected: []
-  disconnected: []
-  error: [Error | (Event & { error: Error })]
-  message: [Message]
-  token: [token: string]
+    connected: []
+    disconnected: []
+    error: [Error | (Event & { error: Error })]
+    message: [Message]
+    token: [token: string]
     auth: [Message & { data: { status: string; token?: string } }]
-  authed: []
-  subscribe: [path: string]
-  unsubscribe: [path: string]
+    authed: []
+    subscribe: [path: string]
+    unsubscribe: [path: string]
   } & { [channel: string]: [Message] }
 > {
   ws?: WebSocket
@@ -169,10 +168,7 @@ export class Socket extends EventEmitter<
   }
 
   handleMessage(ev: MessageEvent) {
-    let msg: string = ev.data || ev // Handle ws/browser difference
-    if (msg.slice(0, 3) === "gz:") {
-      msg = this.api.inflate(msg)
-    }
+    const msg = this.api.gz(ev.data || ev) // Handle ws/browser difference
     debug(`message ${msg}`)
     if (msg[0] === "[") {
       const arr: [string, any] = JSON.parse(msg)
