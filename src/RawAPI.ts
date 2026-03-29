@@ -435,6 +435,15 @@ export class RawAPI extends EventEmitter<{
        */
       roomOverview: (room: string, interval = 8, shard = DEFAULT_SHARD): UndocumentedRes =>
         this.req("GET", "/api/game/room-overview", { room, interval, shard }),
+      /**
+       * POST /api/game/rooms
+       * Fetch multiple rooms terrain at once. Out of borders will not be included in the response.
+       */
+      rooms: (
+        rooms: string[],
+        shard = DEFAULT_SHARD,
+      ): Res<{ rooms: { _id: string; room: string; type: "terrain"; terrain: string }[] }> =>
+        this.req("POST", "/api/game/rooms", { rooms, shard }),
 
       market: {
         /**
