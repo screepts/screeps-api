@@ -180,7 +180,7 @@ export class Socket extends EventEmitter<
       ]
       channel = channel || type
       const event = { channel, id, type, data: arr[1] }
-      this.emit(msg[0], event)
+      this.emit(arr[0], event)
       this.emit(event.channel, event)
       this.emit("message", event)
     } else {
