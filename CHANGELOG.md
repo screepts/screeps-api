@@ -1,0 +1,15 @@
+# Changelog
+
+## [1.1.0](https://github.com/screepts/screeps-api/compare/1.0.0...v1.1.0) (2026-03-29)
+
+
+### Features
+
+* add raw.game.rooms endpoint ([55a5171](https://github.com/screepts/screeps-api/commit/55a5171961ec83e173a9e7c2e97a197dd27a04ac))
+* improve types ([2950e06](https://github.com/screepts/screeps-api/commit/2950e06cef4517b6d96e8d3d71eeec25439a0d64))
+
+
+### Bug Fixes
+
+* **socket:** channel name ([0af3a7d](https://github.com/screepts/screeps-api/commit/0af3a7d851692abbd7c4a8af60f274d1df7c18ab))
+* support response with unexpected content-type ([0be2fb1](https://github.com/screepts/screeps-api/commit/0be2fb1dcff5e37558ec5a12ac8d4febe3ae57e5))
