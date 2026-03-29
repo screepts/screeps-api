@@ -913,10 +913,23 @@ export class RawAPI extends EventEmitter<{
       `${method} ${path} ${rateLimit.remaining}/${rateLimit.limit} ${rateLimit.toReset}s`,
     )
 
-    if (res.headers.get("content-type")?.includes("application/json")) {
+    if (res.headers.get("content-type")?.startsWith("application/json")) {
       res.data = await res.json()
     } else {
-      res.data = await res.text()
+      const buffer = <boolean>("bytes" in res) ? await res.bytes() : await res.arrayBuffer()
+      try {
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(buffer)
+        try {
+          // history endpoint returns JSON with application/octet-stream content type
+          res.data = JSON.parse(text)
+        } catch {
+          // Not JSON, return as text
+          res.data = text
+        }
+      } catch {
+        // Not valid UTF-8, return raw buffer
+        res.data = buffer
+      }
     }
 
     if (!res.ok) {
@@ -936,7 +949,7 @@ export class RawAPI extends EventEmitter<{
         await sleep(Math.floor(Math.random() * 500) + 200)
         return this.req(method, path, body)
       }
-      throw new Error(res.data)
+      throw new Error(res.statusText, { cause: res })
     }
 
     this.emit("response", res)
