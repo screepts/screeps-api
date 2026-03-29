@@ -97,7 +97,7 @@ export class RawAPI extends EventEmitter<{
       timestamp: number
       room: string
       base: number
-      ticks: { [time: string]: AdditonalKeys }
+      ticks: Partial<{ [tick: string]: Partial<{ [id: string]: AdditonalKeys | null }> }>
     }> => {
       if (this.isOfficialServer()) {
         tick -= tick % OFFICIAL_HISTORY_INTERVAL
@@ -584,8 +584,9 @@ export class RawAPI extends EventEmitter<{
       email: (email: string): UndocumentedRes => this.req("POST", "/api/user/email", { email }),
       /**
        * GET /api/user/world-start-room
+       * returns an array contains the name of your starting room.
        */
-      worldStartRoom: (shard: string): UndocumentedRes =>
+      worldStartRoom: (shard?: string): Res<{ room: [string] }> =>
         this.req("GET", "/api/user/world-start-room", { shard }),
       /**
        * GET /api/user/world-status
@@ -1103,7 +1104,7 @@ export interface MarketOrder {
 export interface Me extends User {
   email: string
   cpu: number
-  password: string
+  password: boolean
   notifyPrefs: {
     sendOnline: any
     errorsInterval: any
@@ -1112,10 +1113,18 @@ export interface Me extends User {
     interval: any
   }
   credits: number
-  lastChargeTime: any
-  lastTweetTime: any
-  github: { id: any; username: any }
-  twitter: { username: string; followers_count: number }
+  money: number
+  lastChargeTime?: any
+  lastRespawnDate?: number
+
+  github?: { id: any; username: any }
+  twitter?: { username: string; followers_count: number }
+  cpuShard?: { [shard: string]: number | undefined }
+  resources?: {
+    pixel: number
+    accessKey: number
+    cpuUnlock: number
+  }
 }
 
 export interface User {
@@ -1123,6 +1132,7 @@ export interface User {
   username: string
   badge: Badge
   gcl: number
+  power?: number
 }
 
 interface BinaryModule {

@@ -1,4 +1,5 @@
 import { Socket } from "./Socket"
+export type { SocketEventTypes } from "./Socket"
 import { RawAPI, type CodeList, type Me, type UndocumentedRes, type User } from "./RawAPI"
 export type { CodeList, Me, User, Badge, MarketOrder, UndocumentedRes } from "./RawAPI"
 import { ConfigManager } from "./ConfigManager"
@@ -69,7 +70,7 @@ export class ScreepsAPI extends RawAPI {
       ),
     )
 
-    api.appConfig = (data.configs && data.configs[config as string]) || {}
+    api.appConfig = data.configs?.[config || ""] || {}
 
     if (!conf.token && conf.username && conf.password) {
       await api.auth(conf.username, conf.password)

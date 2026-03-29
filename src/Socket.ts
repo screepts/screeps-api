@@ -12,26 +12,31 @@ const DEFAULTS = {
   maxRetryDelay: 60 * 1000, // in milli-seconds
 }
 
-export interface Message {
+export interface Message<T = any> {
   channel: string
   type: string
   id?: string
-  data: any
+  data: T
 }
 
-export class Socket extends EventEmitter<
-  {
-    connected: []
-    disconnected: []
-    error: [Error | (Event & { error: Error })]
-    message: [Message]
-    token: [token: string]
-    auth: [Message & { data: { status: string; token?: string } }]
-    authed: []
-    subscribe: [path: string]
-    unsubscribe: [path: string]
-  } & { [channel: string]: [Message] }
-> {
+export type SocketEventTypes = {
+  connected: []
+  disconnected: []
+  error: [Error | (Event & { error: Error })]
+  message: [Message]
+  token: [token: string]
+  auth: [Message<{ status: string; token?: string }>]
+  authed: []
+  subscribe: [path: string]
+  unsubscribe: [path: string]
+  console: [
+    Message<
+      ({ messages: { log: string[]; results: string[] } } | { error: string }) & { shard?: string }
+    >,
+  ]
+} & { [channel: string]: [Message] }
+
+export class Socket extends EventEmitter<SocketEventTypes> {
   ws?: WebSocket
   api: ScreepsAPI
   opts: typeof DEFAULTS
@@ -213,7 +218,7 @@ export class Socket extends EventEmitter<
     const waitAuth = new Promise<{
       data: {
         status: string
-        token: string
+        token?: string
       }
     }>((resolve) => this.once("auth", resolve))
     await this.send(`auth ${token}`)
@@ -221,7 +226,7 @@ export class Socket extends EventEmitter<
     if (data.status !== "ok") throw new Error("socket auth failed")
 
     this.authed = true
-    this.emit("token", data.token)
+    this.emit("token", data.token!)
     this.emit("authed")
     while (this.__subQueue.length) {
       await this.send(this.__subQueue.shift()!)
