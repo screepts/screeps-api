@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/screepts/screeps-api/compare/v1.1.0...v1.1.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* handle server path ([94f1812](https://github.com/screepts/screeps-api/commit/94f181232682b54f450dda7dea24be076459af64))
+
 ## [1.1.0](https://github.com/screepts/screeps-api/compare/1.0.0...v1.1.0) (2026-03-29)
 
 
