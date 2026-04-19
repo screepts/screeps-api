@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/screepts/screeps-api/compare/v1.1.1...v1.1.2) (2026-04-19)
+
+
+### Bug Fixes
+
+* season history ([6d93604](https://github.com/screepts/screeps-api/commit/6d9360418af644b913cc3c81ad528ca0b43fd604))
+
 ## [1.1.1](https://github.com/screepts/screeps-api/compare/v1.1.0...v1.1.1) (2026-04-18)
 
 
