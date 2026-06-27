@@ -826,9 +826,18 @@ export class RawAPI extends EventEmitter<{
     scoreboard: {
       /**
        * GET /api/scoreboard/list
+       * @param offset Offset of the first result to return
+       * @param limit The maximum number of results to return per request (max 20)
+       * @param search If defined, filters results to usernames containing this substring (case sensitive)
        */
-      list: (limit = 20, offset = 0): UndocumentedRes =>
-        this.req("GET", "/api/scoreboard/list", { limit, offset }),
+      list: (
+        limit = 20,
+        offset = 0,
+        search?: string,
+      ): Res<{
+        meta: { length: number }
+        users: ScoreboardUser[]
+      }> => this.req("GET", "/api/scoreboard/list", { limit, offset, search }),
     },
   }
 
@@ -1097,6 +1106,14 @@ type StatKey =
   | "energyControl"
   | "energyCreeps"
   | "energyHarvested"
+
+export interface ScoreboardUser {
+  username: string
+  badge: Badge
+  rank: number
+  /** May be absent for players who have not scored yet */
+  score?: number
+}
 
 export interface MarketOrder {
   _id: string
