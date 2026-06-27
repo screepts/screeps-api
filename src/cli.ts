@@ -70,7 +70,7 @@ async function run() {
         } else {
           const data = await api.memory.get(fpath, opts.shard)
           if (opts.file) {
-            await writeFile(opts.file, data)
+            await writeFile(opts.file, data ?? "")
           } else {
             await out(data)
           }

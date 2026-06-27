@@ -676,9 +676,10 @@ export class RawAPI extends EventEmitter<{
         /**
          * GET /api/user/memory?path={path}
          * @param path the path may be empty or absent to retrieve all of Memory, Example: flags.Flag1
-         * @returns gz: followed by base64-encoded gzipped JSON encoding of the requested memory path
+         * @returns `data` is a `gz:`-prefixed base64-encoded gzipped JSON string; call `gz()` to decode.
+         *   If the requested path does not exist, `data` will be absent.
          */
-        get: (path = "", shard = DEFAULT_SHARD): Res<{ data: string }> =>
+        get: (path = "", shard = DEFAULT_SHARD): Res<{ data?: string }> =>
           this.req("GET", "/api/user/memory", { path, shard }),
         /**
          * POST /api/user/memory

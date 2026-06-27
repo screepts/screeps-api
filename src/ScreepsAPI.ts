@@ -187,7 +187,7 @@ export class ScreepsAPI extends RawAPI {
     /** Unlike raw.user.memory.get, this method returns uncompressed memory */
     get: async (path?: string, shard?: string) => {
       const { data } = await this.raw.user.memory.get(path, shard)
-      return this.gz(data)
+      return data && this.gz(data)
     },
   }
   readonly segment = this.raw.user.memory.segment
