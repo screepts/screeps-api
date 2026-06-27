@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/screepts/screeps-api/compare/v1.1.1...v1.2.0) (2026-06-27)
+
+
+### Features
+
+* add scoreboard types ([844421e](https://github.com/screepts/screeps-api/commit/844421ed0d09f36e1c9ef380d3540d87c16d5754))
+* add seasons/list and seasons/current ([97351d1](https://github.com/screepts/screeps-api/commit/97351d11c870422be3d9064d5e9c4c57b0f60387))
+* use opts.shard as default ([fec44f1](https://github.com/screepts/screeps-api/commit/fec44f19aa40f132b0098f75a0eabec08a0e6bf6))
+
+
+### Bug Fixes
+
+* GET user/memory is nullable ([8a85818](https://github.com/screepts/screeps-api/commit/8a8581881f7446e2ec09b94b001e0e48b2074a88))
+* season history ([6d93604](https://github.com/screepts/screeps-api/commit/6d9360418af644b913cc3c81ad528ca0b43fd604))
+
 ## [1.1.1](https://github.com/screepts/screeps-api/compare/v1.1.0...v1.1.1) (2026-04-18)
 
 
