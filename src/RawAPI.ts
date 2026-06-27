@@ -839,6 +839,21 @@ export class RawAPI extends EventEmitter<{
         users: ScoreboardUser[]
       }> => this.req("GET", "/api/scoreboard/list", { limit, offset, search }),
     },
+    seasons: {
+      /**
+       * GET /api/seasons
+       * Fetch a list of all past, current, and upcoming Seasonal World competitions.
+       * Only available on official servers.
+       */
+      list: (): Res<{ list: Season[] }> => this.req("GET", "/api/seasons"),
+      /**
+       * GET /api/seasons/current
+       * Fetch metadata for the current Seasonal World competition.
+       * Returns null (HTTP 404) if no competition is currently active or about to start.
+       * Only available on official servers.
+       */
+      current: (): Res<Season & { rank: number }> => this.req("GET", "/api/seasons/current"),
+    },
   }
 
   currentSeason() {
@@ -1106,6 +1121,25 @@ type StatKey =
   | "energyControl"
   | "energyCreeps"
   | "energyHarvested"
+
+export interface Season {
+  _id: string
+  /** Name of the season (e.g. "Season 8") */
+  title: string
+  /** Season ordinal (e.g. 8 for Season 8) */
+  index: number
+  /**
+   * Ostensibly the number of participants, but almost always 0.
+   * Use `ScoreboardListResponse.meta.length` for an accurate player count.
+   */
+  players: number
+  /** Season start date/time (ISO 8601 UTC) */
+  startDate: string
+  /** Season end date/time (ISO 8601 UTC) */
+  endDate: string
+  createdAt: string
+  updatedAt: string
+}
 
 export interface ScoreboardUser {
   username: string
