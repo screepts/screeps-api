@@ -46,6 +46,7 @@ export class RawAPI extends EventEmitter<{
     email?: string
     password?: string
     experimentalRetry429?: boolean
+    shard?: string
   } & AdditonalKeys
   token?: string
   private __authed = false
@@ -54,6 +55,10 @@ export class RawAPI extends EventEmitter<{
     super()
     this.opts = {} as any
     this.setServer(opts)
+  }
+
+  get shard() {
+    return this.opts.shard ?? DEFAULT_SHARD
   }
 
   readonly raw = {
@@ -97,7 +102,7 @@ export class RawAPI extends EventEmitter<{
     history: (
       room: string,
       tick: number,
-      shard = DEFAULT_SHARD,
+      shard?: string,
     ): Promise<{
       /** milliseconds since the Unix epoch */
       timestamp: number
@@ -109,7 +114,7 @@ export class RawAPI extends EventEmitter<{
         tick -= tick % OFFICIAL_HISTORY_INTERVAL
         // season history ignore path opts (/room-history/seasonShard instead of /season/room-history/seasonShard)
         const url = new URL(this.opts.url)
-        url.pathname = `/room-history/${shard}/${room}/${tick}.json`
+        url.pathname = `/room-history/${shard ?? this.shard}/${room}/${tick}.json`
         return this.req("GET", url)
       } else {
         tick -= tick % PRIVATE_HISTORY_INTERVAL
@@ -230,7 +235,7 @@ export class RawAPI extends EventEmitter<{
       mapStats: (
         rooms: string[],
         statName: "owner0" | "claim0" | StatKey,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): Res<{
         stats: {
           [roomName: string]: {
@@ -240,17 +245,22 @@ export class RawAPI extends EventEmitter<{
           } & { [key in StatKey]: { user: string; value: number }[] }
         }
         users: { [userId: string]: { _id: string; username: string; badge: Badge } }
-      }> => this.req("POST", "/api/game/map-stats", { rooms, statName, shard }),
+      }> =>
+        this.req("POST", "/api/game/map-stats", { rooms, statName, shard: shard ?? this.shard }),
       /**
        * POST /api/game/gen-unique-object-name
        */
-      genUniqueObjectName: (type: "flag" | "spawn", shard = DEFAULT_SHARD): Res<{ name: string }> =>
-        this.req("POST", "/api/game/gen-unique-object-name", { type, shard }),
+      genUniqueObjectName: (type: "flag" | "spawn", shard?: string): Res<{ name: string }> =>
+        this.req("POST", "/api/game/gen-unique-object-name", { type, shard: shard ?? this.shard }),
       /**
        * POST /api/game/check-unique-object-name
        */
-      checkUniqueObjectName: (type: string, name: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("POST", "/api/game/check-unique-object-name", { type, name, shard }),
+      checkUniqueObjectName: (type: string, name: string, shard?: string): UndocumentedRes =>
+        this.req("POST", "/api/game/check-unique-object-name", {
+          type,
+          name,
+          shard: shard ?? this.shard,
+        }),
       /**
        * POST /api/game/place-spawn
        */
@@ -259,8 +269,9 @@ export class RawAPI extends EventEmitter<{
         x: number,
         y: number,
         name: string,
-        shard = DEFAULT_SHARD,
-      ): UndocumentedRes => this.req("POST", "/api/game/place-spawn", { name, room, x, y, shard }),
+        shard?: string,
+      ): UndocumentedRes =>
+        this.req("POST", "/api/game/place-spawn", { name, room, x, y, shard: shard ?? this.shard }),
       /**
        * POST /api/game/create-flag
        * - if the name is new, result.upserted[0]._id is the game id of the created flag
@@ -274,7 +285,7 @@ export class RawAPI extends EventEmitter<{
         name: string,
         color: FlagColor = 1,
         secondaryColor: FlagColor = 1,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): DbResponse =>
         this.req("POST", "/api/game/create-flag", {
           name,
@@ -283,32 +294,36 @@ export class RawAPI extends EventEmitter<{
           y,
           color,
           secondaryColor,
-          shard,
+          shard: shard ?? this.shard,
         }),
       /**
        * POST/api/game/gen-unique-flag-name
        */
-      genUniqueFlagName: (shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("POST", "/api/game/gen-unique-flag-name", { shard }),
+      genUniqueFlagName: (shard?: string): UndocumentedRes =>
+        this.req("POST", "/api/game/gen-unique-flag-name", { shard: shard ?? this.shard }),
       /**
        * POST /api/game/check-unique-flag-name
        */
-      checkUniqueFlagName: (name: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("POST", "/api/game/check-unique-flag-name", { name, shard }),
+      checkUniqueFlagName: (name: string, shard?: string): UndocumentedRes =>
+        this.req("POST", "/api/game/check-unique-flag-name", { name, shard: shard ?? this.shard }),
       /**
        * POST /api/game/change-flag-color
        */
       changeFlagColor: (
         color: FlagColor = 1,
         secondaryColor: FlagColor = 1,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): DbResponse =>
-        this.req("POST", "/api/game/change-flag-color", { color, secondaryColor, shard }),
+        this.req("POST", "/api/game/change-flag-color", {
+          color,
+          secondaryColor,
+          shard: shard ?? this.shard,
+        }),
       /**
        * POST /api/game/remove-flag
        */
-      removeFlag: (room: string, name: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("POST", "/api/game/remove-flag", { name, room, shard }),
+      removeFlag: (room: string, name: string, shard?: string): UndocumentedRes =>
+        this.req("POST", "/api/game/remove-flag", { name, room, shard: shard ?? this.shard }),
       /**
        * POST /api/game/add-object-intent
        * [Missing parameter] _id is the game id of the object to affect (except for destroying structures), room is the name of the room it's in
@@ -321,13 +336,13 @@ export class RawAPI extends EventEmitter<{
   intent can be an empty object for suicide and unclaim, but the web interface sends the id in it, as described
         * @example remove construction site: name = "remove", intent = {}
         */
-      addObjectIntent: (
-        room: string,
-        name: string,
-        intent: string,
-        shard = DEFAULT_SHARD,
-      ): DbResponse =>
-        this.req("POST", "/api/game/add-object-intent", { room, name, intent, shard }),
+      addObjectIntent: (room: string, name: string, intent: string, shard?: string): DbResponse =>
+        this.req("POST", "/api/game/add-object-intent", {
+          room,
+          name,
+          intent,
+          shard: shard ?? this.shard,
+        }),
       /**
        * POST /api/game/create-construction
        * @returns {{ ok, result: { ok, n }, ops: [ { type, room, x, y, structureType, user, progress, progressTotal, _id } ], insertedCount, insertedIds }}
@@ -338,7 +353,7 @@ export class RawAPI extends EventEmitter<{
         y: number,
         structureType: string,
         name: string,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): DbInsertResponse<{
         ops: {
           type: string
@@ -358,13 +373,17 @@ export class RawAPI extends EventEmitter<{
           y,
           structureType,
           name,
-          shard,
+          shard: shard ?? this.shard,
         }),
       /**
        * POST /api/game/set-notify-when-attacked
        */
-      setNotifyWhenAttacked: (_id: string, enabled = true, shard = DEFAULT_SHARD): DbResponse =>
-        this.req("POST", "/api/game/set-notify-when-attacked", { _id, enabled, shard }),
+      setNotifyWhenAttacked: (_id: string, enabled = true, shard?: string): DbResponse =>
+        this.req("POST", "/api/game/set-notify-when-attacked", {
+          _id,
+          enabled,
+          shard: shard ?? this.shard,
+        }),
       /**
        * POST /api/game/create-invader
        */
@@ -375,7 +394,7 @@ export class RawAPI extends EventEmitter<{
         size: any,
         type: any,
         boosted = false,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): UndocumentedRes =>
         this.req("POST", "/api/game/create-invader", {
           room,
@@ -384,33 +403,33 @@ export class RawAPI extends EventEmitter<{
           size,
           type,
           boosted,
-          shard,
+          shard: shard ?? this.shard,
         }),
       /**
        * POST /api/game/remove-invader
        */
-      removeInvader: (_id: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("POST", "/api/game/remove-invader", { _id, shard }),
+      removeInvader: (_id: string, shard?: string): UndocumentedRes =>
+        this.req("POST", "/api/game/remove-invader", { _id, shard: shard ?? this.shard }),
       /**
        * GET /api/game/time
        */
-      time: (shard = DEFAULT_SHARD): Res<{ time: number }> =>
-        this.req("GET", "/api/game/time", { shard }),
+      time: (shard?: string): Res<{ time: number }> =>
+        this.req("GET", "/api/game/time", { shard: shard ?? this.shard }),
       /**
        * GET /api/game/world-size
        */
-      worldSize: (shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("GET", "/api/game/world-size", { shard }),
+      worldSize: (shard?: string): UndocumentedRes =>
+        this.req("GET", "/api/game/world-size", { shard: shard ?? this.shard }),
       /**
        * GET /api/game/room-decorations
        */
-      roomDecorations: (room: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("GET", "/api/game/room-decorations", { room, shard }),
+      roomDecorations: (room: string, shard?: string): UndocumentedRes =>
+        this.req("GET", "/api/game/room-decorations", { room, shard: shard ?? this.shard }),
       /**
        * GET /api/game/room-objects
        */
-      roomObjects: (room: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("GET", "/api/game/room-objects", { room, shard }),
+      roomObjects: (room: string, shard?: string): UndocumentedRes =>
+        this.req("GET", "/api/game/room-objects", { room, shard: shard ?? this.shard }),
       /**
        * GET /api/game/room-terrain
        * terrain is a string of digits, giving the terrain left-to-right and top-to-bottom
@@ -419,40 +438,41 @@ export class RawAPI extends EventEmitter<{
       roomTerrain: (
         room: string,
         encoded = 1,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ):
         | Res<{
             terrain: { room: string; x: number; y: number; type: "wall" | "swamp" }[]
           }>
         | Res<{
             terrain: { _id: string; room: string; terrain: string; type: "wall" | "swamp" }[]
-          }> => this.req("GET", "/api/game/room-terrain", { room, encoded, shard }),
+          }> =>
+        this.req("GET", "/api/game/room-terrain", { room, encoded, shard: shard ?? this.shard }),
       /**
        * GET /api/game/room-status
        * if the room is in a novice area, novice will contain the Unix timestamp of the end of the protection (otherwise it is absent)
        */
       roomStatus: (
         room: string,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): Promise<{
         _id: string
         status: "normal" | "out of borders"
         novice?: string
-      }> => this.req("GET", "/api/game/room-status", { room, shard }),
+      }> => this.req("GET", "/api/game/room-status", { room, shard: shard ?? this.shard }),
       /**
        * GET /api/game/room-overview
        */
-      roomOverview: (room: string, interval = 8, shard = DEFAULT_SHARD): UndocumentedRes =>
-        this.req("GET", "/api/game/room-overview", { room, interval, shard }),
+      roomOverview: (room: string, interval = 8, shard?: string): UndocumentedRes =>
+        this.req("GET", "/api/game/room-overview", { room, interval, shard: shard ?? this.shard }),
       /**
        * POST /api/game/rooms
        * Fetch multiple rooms terrain at once. Out of borders will not be included in the response.
        */
       rooms: (
         rooms: string[],
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): Res<{ rooms: { _id: string; room: string; type: "terrain"; terrain: string }[] }> =>
-        this.req("POST", "/api/game/rooms", { rooms, shard }),
+        this.req("POST", "/api/game/rooms", { rooms, shard: shard ?? this.shard }),
 
       market: {
         /**
@@ -461,10 +481,10 @@ export class RawAPI extends EventEmitter<{
          * - `count` is the number of orders.
          */
         ordersIndex: (
-          shard = DEFAULT_SHARD,
+          shard?: string,
         ): Res<{
           list: { _id: string; count: number }[]
-        }> => this.req("GET", "/api/game/market/orders-index", { shard }),
+        }> => this.req("GET", "/api/game/market/orders-index", { shard: shard ?? this.shard }),
         /**
          * GET /api/game/market/my-orders
          * `resourceType` is one of the RESOURCE_* constants.
@@ -479,15 +499,16 @@ export class RawAPI extends EventEmitter<{
          */
         orders: (
           resourceType: string,
-          shard = DEFAULT_SHARD,
+          shard?: string,
         ): Res<{
           list: MarketOrder[]
-        }> => this.req("GET", "/api/game/market/orders", { resourceType, shard }),
+        }> =>
+          this.req("GET", "/api/game/market/orders", { resourceType, shard: shard ?? this.shard }),
         /**
          * GET /api/game/market/stats
          */
-        stats: (resourceType: string, shard = DEFAULT_SHARD): UndocumentedRes =>
-          this.req("GET", "/api/game/market/stats", { resourceType, shard }),
+        stats: (resourceType: string, shard?: string): UndocumentedRes =>
+          this.req("GET", "/api/game/market/stats", { resourceType, shard: shard ?? this.shard }),
       },
       shards: {
         /**
@@ -596,7 +617,7 @@ export class RawAPI extends EventEmitter<{
        * returns an array contains the name of your starting room.
        */
       worldStartRoom: (shard?: string): Res<{ room: [string] }> =>
-        this.req("GET", "/api/user/world-start-room", { shard }),
+        this.req("GET", "/api/user/world-start-room", { shard: shard ?? this.shard }),
       /**
        * GET /api/user/world-status
        * returns a world status
@@ -679,8 +700,8 @@ export class RawAPI extends EventEmitter<{
          * @returns `data` is a `gz:`-prefixed base64-encoded gzipped JSON string; call `gz()` to decode.
          *   If the requested path does not exist, `data` will be absent.
          */
-        get: (path = "", shard = DEFAULT_SHARD): Res<{ data?: string }> =>
-          this.req("GET", "/api/user/memory", { path, shard }),
+        get: (path = "", shard?: string): Res<{ data?: string }> =>
+          this.req("GET", "/api/user/memory", { path, shard: shard ?? this.shard }),
         /**
          * POST /api/user/memory
          * @param path the path may be empty or absent to retrieve all of Memory, Example: flags.Flag1
@@ -688,25 +709,29 @@ export class RawAPI extends EventEmitter<{
         set: (
           path: string,
           value: any,
-          shard = DEFAULT_SHARD,
+          shard?: string,
         ): DbInsertResponse<{
           ops: { user: string; expression: string; hidden: boolean }[]
           data: any
-        }> => this.req("POST", "/api/user/memory", { path, value, shard }),
+        }> => this.req("POST", "/api/user/memory", { path, value, shard: shard ?? this.shard }),
 
         segment: {
           /**
            * GET /api/user/memory-segment?segment=[0-99]
            * @param segment A number from 0-99
            */
-          get: (segment: number, shard = DEFAULT_SHARD): Res<{ data: string }> =>
-            this.req("GET", "/api/user/memory-segment", { segment, shard }),
+          get: (segment: number, shard?: string): Res<{ data: string }> =>
+            this.req("GET", "/api/user/memory-segment", { segment, shard: shard ?? this.shard }),
           /**
            * POST /api/user/memory-segment
            * @param segment A number from 0-99
            */
-          set: (segment: number, data: any, shard = DEFAULT_SHARD): UndocumentedRes =>
-            this.req("POST", "/api/user/memory-segment", { segment, data, shard }),
+          set: (segment: number, data: any, shard?: string): UndocumentedRes =>
+            this.req("POST", "/api/user/memory-segment", {
+              segment,
+              data,
+              shard: shard ?? this.shard,
+            }),
         },
       },
       /**
@@ -777,10 +802,10 @@ export class RawAPI extends EventEmitter<{
        */
       console: (
         expression: any,
-        shard = DEFAULT_SHARD,
+        shard?: string,
       ): DbInsertResponse<{
         ops: { user: string; expression: any; _id: string }[]
-      }> => this.req("POST", "/api/user/console", { expression, shard }),
+      }> => this.req("POST", "/api/user/console", { expression, shard: shard ?? this.shard }),
       /**
        * GET /api/user/name
        */

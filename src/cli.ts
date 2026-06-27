@@ -4,8 +4,8 @@ import { readFile, writeFile } from "fs/promises"
 import { join, parse } from "path"
 import { version } from "../package.json"
 
-async function init(opts: { server: string }) {
-  return ScreepsAPI.fromConfig(opts.server)
+async function init(opts: { server: string; shard?: string }) {
+  return ScreepsAPI.fromConfig(opts.server, false, { shard: opts.shard })
 }
 
 async function out(data: any) {
@@ -65,10 +65,10 @@ async function run() {
             throw new Error("Refusing to write to root! Use --allow-root if you really want this.")
           }
           const data = await readFile(opts.set, "utf8")
-          await api.memory.set(fpath, data, opts.shard)
+          await api.memory.set(fpath, data)
           await out("Memory written")
         } else {
-          const data = await api.memory.get(fpath, opts.shard)
+          const data = await api.memory.get(fpath)
           if (opts.file) {
             await writeFile(opts.file, data ?? "")
           } else {
@@ -93,11 +93,11 @@ async function run() {
         const api = await init(opts)
         if (opts.set) {
           const data = await readFile(opts.set, "utf8")
-          await api.memory.segment.set(segment, data, opts.shard)
+          await api.memory.segment.set(segment, data)
           await out("Segment Set")
         } else {
           if (segment === "all") segment = Array.from({ length: 100 }, (v, k) => k).join(",")
-          const { data } = await api.memory.segment.get(segment, opts.shard)
+          const { data } = await api.memory.segment.get(segment)
           const dir = opts.dir
           const segments = data
           if (dir) {
